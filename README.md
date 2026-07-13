@@ -60,17 +60,15 @@ pip install -r requirements.txt
 
 ### Every time — generate the documents
 
-Put your template and spreadsheet in this folder, then run:
+Put your template and spreadsheet in the `input` folder, then run (both
+`--template` and `--data` are required):
 
 ```
-python fill_docs.py
+python fill_docs.py --template "input/Offer_Template.docx" --data "input/content.xlsx"
 ```
 
-By default it uses:
-
-- Template: `template/Offer_Template.docx`
-- Spreadsheet: `content.xlsx`
-- Output folder: `output/`
+Finished documents are written to the `output/` folder by default (change it
+with `--outdir`).
 
 You'll see one line per document created, for example:
 
@@ -84,13 +82,13 @@ Done. 2 document(s) written to 'output/'.
 ### Using your own file names
 
 ```
-python fill_docs.py --template "template/MyLetter.docx" --data "staff.xlsx" --outdir "letters"
+python fill_docs.py --template "input/MyLetter.docx" --data "input/staff.xlsx" --outdir "letters"
 ```
 
 Name each output file after a particular column (default is the first column):
 
 ```
-python fill_docs.py --name-column "Employee Name"
+python fill_docs.py --template "input/MyLetter.docx" --data "input/staff.xlsx" --name-column "Employee Name"
 ```
 
 See every option with:
@@ -121,10 +119,10 @@ python fill_docs.py --help
 |----------------------------------|-------------------------------------------------------|
 | `fill_docs.py`                   | The script that does the work.                        |
 | `requirements.txt`               | The two libraries it needs.                           |
-| `template/Offer_Template.docx`   | Example template using the `{{ }}` convention.        |
-| `content.xlsx`                   | Example spreadsheet (one header row, one row/person). |
+| `input/Offer_Template.docx`      | Example template using the `{{ }}` convention.        |
+| `input/content.xlsx`             | Example spreadsheet (one header row, one row/person). |
+| `input/`                         | Put your template and spreadsheet here.               |
 | `output/`                        | Where finished documents are written.                 |
-| `examples_original/`             | Untouched copies of the originally supplied examples. |
 
 ---
 

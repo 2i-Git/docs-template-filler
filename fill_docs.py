@@ -9,9 +9,9 @@ Matching ignores capitalisation and extra spaces, so ``{{New CTC}}`` matches a
 column headed ``New CTC``, ``new ctc`` or ``New  CTC``.
 
 Usage (from the project folder):
-    python fill_docs.py                         # uses the default files below
+    python fill_docs.py --template T.docx --data D.xlsx
     python fill_docs.py --template T.docx --data D.xlsx --outdir out
-    python fill_docs.py --name-column "Employee Name"   # names the output files
+    python fill_docs.py --template T.docx --data D.xlsx --name-column "Employee Name"
 
 Run ``python fill_docs.py --help`` for all options.
 """
@@ -200,9 +200,9 @@ def main() -> int:
         description="Fill a .docx template from a spreadsheet — one file per row.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--template", default="template/Offer_Template.docx",
+    parser.add_argument("--template", required=True,
                         help="Path to the .docx template")
-    parser.add_argument("--data", default="content.xlsx",
+    parser.add_argument("--data", required=True,
                         help="Path to the .xlsx spreadsheet")
     parser.add_argument("--outdir", default="output",
                         help="Folder where finished documents are written")
