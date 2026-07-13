@@ -1,0 +1,8 @@
+.claude
+.DS_Store
+__pycache__/
+.env
+output/*.docx
+input/*.docx
+input/*.xlsx
+SCOPE.md
