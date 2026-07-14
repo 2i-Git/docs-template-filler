@@ -12,10 +12,4 @@ SCOPE.md
 .pytest_cache/
 test-results.xml
 
-# Terraform (local state & provider cache — never commit these)
-infra/.terraform/
-*.tfstate
-*.tfstate.*
-infra/backend.hcl
-crash.log
 deploy/
