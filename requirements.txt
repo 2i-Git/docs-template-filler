@@ -1,8 +1,0 @@
-# Core document-filling logic (used by the CLI and the web app)
-python-docx>=1.1.0
-openpyxl>=3.1.0
-
-# Web app (webapp/) — not needed if you only use the command-line script
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-python-multipart>=0.0.9

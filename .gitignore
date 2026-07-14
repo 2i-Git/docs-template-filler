@@ -1,15 +1,11 @@
 .claude
 .DS_Store
-__pycache__/
 .env
-output/*.docx
-input/*.docx
-input/*.xlsx
 SCOPE.md
 
-# Python / tests
-.venv/
-.pytest_cache/
-test-results.xml
+# Local data / scratch (not part of the static app)
+input/
+output/
 
 deploy/
+deployment.md
