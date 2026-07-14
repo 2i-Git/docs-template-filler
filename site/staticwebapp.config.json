@@ -1,0 +1,13 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/vendor/*", "/app.js", "/*.png"]
+  },
+  "mimeTypes": {
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff"
+  }
+}

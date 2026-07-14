@@ -119,8 +119,9 @@ python fill_docs.py --help
 |----------------------------------|--------------------------------------------------------|
 | `fill_docs.py`                   | The command-line script.                               |
 | `docs_filler/core.py`            | The shared filling logic (used by the script and app). |
-| `webapp/`                        | The web app (FastAPI) — see below.                     |
-| `Dockerfile`                     | Builds the web app into a container for the cloud.     |
+| `site/`                          | The **static, browser-only** web app — see below.      |
+| `webapp/`                        | The older server web app (FastAPI) — see below.        |
+| `Dockerfile`                     | Builds the FastAPI app into a container for the cloud. |
 | `deploy/README-deploy.md`        | Step-by-step Azure + Entra ID deployment guide.        |
 | `requirements.txt`               | The libraries it needs.                                |
 | `input/Offer_Template.docx`      | Example template using the `{{ }}` convention.         |
@@ -167,6 +168,59 @@ Deployment is a one-time manual setup plus an automated pipeline for updates:
   the image in ACR and rolls out a new revision — using the Azure CLI, so the
   pipeline only needs **Contributor** on the resource group. See
   [`deploy/README-pipeline.md`](deploy/README-pipeline.md).
+
+## Run it as a free static web app (recommended)
+
+The `site/` folder is a **fully self-contained, browser-only** version of the web
+app. It does exactly what the tool above does — upload a template and spreadsheet,
+watch a progress bar, download a single ZIP — but **all of the work happens in the
+browser using JavaScript**. There is no server and nothing to install for your
+colleagues.
+
+- **Even stronger privacy.** Because everything runs on the user's own device,
+  the template and spreadsheet are **never uploaded anywhere** — not to a server,
+  not to disk, not to any storage.
+- **Free hosting.** It's just static files, so it runs on the **Azure Static Web
+  Apps free tier** (custom domain + free SSL + global CDN included).
+- **Same behaviour as the CLI.** `site/app.js` is a direct port of
+  `docs_filler/core.py`, so placeholders (including ones split across runs),
+  number formatting, headers/footers, filenames and missing-placeholder warnings
+  all match. A parity test diffs its output against the Python tool.
+
+The site has no build step. Its parts are:
+
+| File                             | What it is                                             |
+|----------------------------------|--------------------------------------------------------|
+| `site/index.html`                | The UI (same look as the FastAPI app).                 |
+| `site/app.js`                    | The filling logic, ported from `docs_filler/core.py`.  |
+| `site/vendor/jszip.min.js`       | Reads/writes the `.docx` and `.zip` (vendored, no CDN).|
+| `site/vendor/xlsx.full.min.js`   | Reads the `.xlsx` (SheetJS, vendored, no CDN).         |
+| `site/staticwebapp.config.json`  | Azure Static Web Apps routing/MIME config.             |
+
+### Try it locally
+
+Serve the folder with any static file server, e.g.:
+
+```
+python -m http.server -d site 8080
+```
+
+Then open <http://127.0.0.1:8080> in your browser. (Opening `index.html` directly
+via `file://` won't work — the vendored scripts need to load over http.)
+
+### Deploy it (Azure Static Web Apps, free)
+
+Full step-by-step instructions are in **[`deployment.md`](deployment.md)**. In
+short: create a free Static Web App (deployment source **Other**), copy its
+deployment token into a secret pipeline variable named `deployment_token`, and
+push to `main` — `azure-pipelines.yml` runs the tests and then publishes `site/`
+with the `AzureStaticWebApp@0` task. No container, no ACR.
+
+> **Access is public** (anyone with the URL can use it). That's safe here because
+> it's a pure client-side tool that stores nothing. Restricting sign-in to your
+> own Entra tenant would require the Static Web Apps **Standard** plan (a custom
+> Entra provider) — the free preconfigured provider can't be tenant-locked. If you
+> need org-only access, keep using the container app below instead.
 
 ## Tests
 

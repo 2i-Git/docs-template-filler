@@ -152,7 +152,7 @@
 <body>
 <header>
   <div class="brand">
-    <img src="/static/2i-Logo.png" alt="2i logo">
+    <img src="/2i-Logo.png" alt="2i logo">
     <span>Docs Filler</span>
   </div>
   <nav>
@@ -232,8 +232,8 @@
       <div class="note" id="note"></div>
     </div>
 
-    <p class="foot">Your files are processed in memory and never stored. The download
-    is offered once, then discarded.</p>
+    <p class="foot">Everything runs in your browser — your files never leave your
+    device and are never uploaded or stored.</p>
   </section>
 
   <!-- ============ USER GUIDE VIEW ============ -->
@@ -308,12 +308,16 @@
       </div>
 
       <h2>Privacy</h2>
-      <p>Uploads are processed entirely in memory. Nothing is written to disk or stored,
-      and jobs are dropped as soon as you download them.</p>
+      <p>Everything happens locally in your web browser. Your template and spreadsheet
+      are read and filled on your own device — they are never uploaded to a server,
+      written to disk, or stored anywhere.</p>
     </div>
   </section>
 </main>
 
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/xlsx.full.min.js"></script>
+<script src="/app.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 
@@ -332,11 +336,6 @@ document.querySelectorAll("[data-view]").forEach(el => {
     showView(el.getAttribute("data-view"));
   });
 });
-
-// Show signed-in user (from Easy Auth); silent when running locally.
-fetch("/api/me").then(r => r.json()).then(d => {
-  if (d.name) $("user").textContent = "Signed in as " + d.name;
-}).catch(() => {});
 
 // File picker labelling + drag/drop styling.
 function wireDrop(inputId, dropId, nameId) {
@@ -370,10 +369,22 @@ function showNote(kind, html) {
 }
 function clearNote() { $("note").className = "note"; $("note").innerHTML = ""; }
 
+const readFile = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(new Uint8Array(r.result));
+  r.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+  r.readAsArrayBuffer(file);
+});
+
+// Let the browser paint progress updates between documents.
+const yieldToUI = () => new Promise(requestAnimationFrame);
+
 $("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   clearNote();
-  if (!$("template").files.length || !$("data").files.length) {
+  const templateFile = $("template").files[0];
+  const dataFile = $("data").files[0];
+  if (!templateFile || !dataFile) {
     showNote("err", "Please choose both a template and a spreadsheet.");
     return;
   }
@@ -383,59 +394,63 @@ $("form").addEventListener("submit", async (e) => {
   $("progress").style.display = "block";
   $("bar").classList.add("indeterminate");
   $("bar").querySelector("i").style.width = "";
-  $("status").textContent = "Uploading…";
+  $("status").textContent = "Reading your files…";
 
-  const fd = new FormData($("form"));
-  let jobId;
   try {
-    const res = await fetch("/api/jobs", { method: "POST", body: fd });
-    if (!res.ok) {
-      const msg = (await res.json().catch(() => ({}))).detail || "Upload failed.";
-      throw new Error(msg);
-    }
-    jobId = (await res.json()).job_id;
-  } catch (err) {
-    finishError(err.message);
-    return;
-  }
+    const [templateBytes, xlsxBytes] = await Promise.all([
+      readFile(templateFile), readFile(dataFile),
+    ]);
+    await yieldToUI();
 
-  const es = new EventSource(`/api/jobs/${jobId}/events`);
-  es.onmessage = (ev) => {
-    const d = JSON.parse(ev.data);
-    if (d.total) {
-      $("bar").classList.remove("indeterminate");
-      const pct = Math.round((d.done / d.total) * 100);
-      $("bar").querySelector("i").style.width = pct + "%";
-      $("status").textContent = `Creating document ${d.done} of ${d.total}…`;
-    }
-    if (d.status === "done") {
-      es.close();
-      $("bar").querySelector("i").style.width = "100%";
-      $("status").textContent = "Done.";
-      triggerDownload(jobId);
-      let msg = `<strong>Ready.</strong> Your download has started. `
-              + `Please open the documents and check every detail is correct and matches `
-              + `the intended data before sending or filing them.`;
-      if (d.missing && d.missing.length) {
-        const list = d.missing.map(m => `{{${m}}}`).join(", ");
-        msg += `<br><br>Note: these placeholders had no matching column and were left unchanged: ${list}`;
+    const baseName = templateFile.name.replace(/\.[^.]+$/, "") || "document";
+    const { zipBytes, missing } = await DocsFiller.generateZip(
+      templateBytes, xlsxBytes,
+      {
+        base_name: baseName,
+        name_column: $("name_column").value.trim(),
+        sheet: $("sheet").value.trim(),
+        progress: (done, total) => {
+          $("bar").classList.remove("indeterminate");
+          const pct = Math.round((done / total) * 100);
+          $("bar").querySelector("i").style.width = pct + "%";
+          $("status").textContent = `Creating document ${done} of ${total}…`;
+        },
       }
-      showNote("ok", msg);
-      resetButton();
-    } else if (d.status === "error") {
-      es.close();
-      finishError(d.error || "The job failed.");
+    );
+
+    $("bar").classList.remove("indeterminate");
+    $("bar").querySelector("i").style.width = "100%";
+    $("status").textContent = "Done.";
+    const zipName = baseName + ".zip";
+    triggerDownload(zipBytes, zipName);
+
+    let msg = `<strong>Ready.</strong> Your ${zipName} download has started. `
+            + `Please open the documents and check every detail is correct and matches `
+            + `the intended data before sending or filing them.`;
+    if (missing && missing.length) {
+      const list = missing.map(m => `{{${m}}}`).join(", ");
+      msg += `<br><br>Note: these placeholders had no matching column and were left unchanged: ${list}`;
     }
-  };
-  es.onerror = () => { es.close(); finishError("Lost connection to the server."); };
+    showNote("ok", msg);
+    resetButton();
+  } catch (err) {
+    const message = (err && err.name === "DocsFillerError")
+      ? err.message
+      : (err && err.message) || "Something went wrong while creating the documents.";
+    finishError(message);
+  }
 });
 
-function triggerDownload(jobId) {
+function triggerDownload(zipBytes, filename) {
+  const blob = new Blob([zipBytes], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = `/api/jobs/${jobId}/download`;
+  a.href = url;
+  a.download = filename || "documents.zip";
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 function resetButton() { $("go").disabled = false; }
 function finishError(message) {

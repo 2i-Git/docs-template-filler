@@ -56,6 +56,8 @@ def test_full_job_flow(client):
 
     download = _wait_for_download(client, job_id)
     assert download.headers["content-type"] == "application/zip"
+    # The zip is named after the uploaded template ("t.docx" -> "t.zip").
+    assert 't.zip' in download.headers["content-disposition"]
     zf = zipfile.ZipFile(BytesIO(download.content))
     assert len(zf.namelist()) == 2
 

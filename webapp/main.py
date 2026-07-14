@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -49,6 +50,7 @@ class Job:
     done: int = 0
     total: Optional[int] = None
     zip_bytes: Optional[bytes] = None
+    zip_name: str = "documents.zip"      # download filename (named after the template)
     missing: list = field(default_factory=list)
     error: Optional[str] = None
     created_at: float = field(default_factory=time.monotonic)
@@ -101,6 +103,17 @@ def _fail(job_id: str, message: str) -> None:
             job.status, job.error = "error", message
 
 
+def _content_disposition(filename: str) -> str:
+    """Build a safe Content-Disposition value for a download filename.
+
+    Provides an ASCII fallback plus a UTF-8 ``filename*`` for non-ASCII names,
+    and strips characters that could break the header.
+    """
+    safe = filename.replace("\r", "").replace("\n", "").replace('"', "")
+    ascii_name = safe.encode("ascii", "ignore").decode("ascii") or "documents.zip"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(safe)}"
+
+
 # --- routes ----------------------------------------------------------------
 
 @app.get("/")
@@ -139,7 +152,7 @@ async def create_job(
 
     job_id = uuid.uuid4().hex
     with _lock:
-        _jobs[job_id] = Job()
+        _jobs[job_id] = Job(zip_name=f"{base_name}.zip")
 
     threading.Thread(
         target=_run_job,
@@ -197,13 +210,14 @@ async def download(job_id: str):
         raise HTTPException(409, "The documents are not ready yet.")
 
     zip_bytes = job.zip_bytes
+    zip_name = job.zip_name
     with _lock:
         _jobs.pop(job_id, None)  # one-time download; drop from memory immediately
 
     return StreamingResponse(
         BytesIO(zip_bytes),
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="documents.zip"'},
+        headers={"Content-Disposition": _content_disposition(zip_name)},
     )
 
 

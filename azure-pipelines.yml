@@ -1,21 +1,18 @@
 # Docs Filler — CI/CD for Azure DevOps.
 #
 # Pull requests to main:  run the tests only.
-# Merge to main:          run the tests, then build the image in ACR and roll
-#                         out a new revision of the (already-provisioned)
-#                         Container App.
+# Merge to main:          run the tests, then deploy the static site in `site/`
+#                         to Azure Static Web Apps (free tier).
 #
-# The Azure infrastructure — resource group, ACR, Container Apps environment,
-# the app itself, and Easy Auth sign-in wired to your existing Entra app — is
-# created once, out-of-band, with the Azure CLI (see deploy/README-deploy.md).
-# This pipeline only ships new code, so its service connection only needs
-# **Contributor on the resource group** — no role assignments, no Terraform.
+# The app is now a fully client-side static site — all document filling happens
+# in the browser, so there is no server, no container, and nothing to store. The
+# only Azure resource is a free Static Web App, provisioned once (out-of-band)
+# via the portal or Azure CLI. Copy its deployment token into a **secret**
+# pipeline variable named `deployment_token` (Pipelines → Edit → Variables, keep
+# it secret) — that token is all this pipeline needs to publish.
 #
-# Prerequisites (one-time):
-#   * The infra from deploy/README-deploy.md already exists.
-#   * An ARM service connection named as `azureServiceConnection` below, whose
-#     service principal has Contributor on the resource group.
-#   * Set acrName / appName / rgName below to the names you used.
+# The retained Python (CLI, core, FastAPI app, tests) is still exercised by the
+# Test stage below but is no longer deployed.
 
 trigger:
   branches:
@@ -28,16 +25,6 @@ pr:
       - main
 
 variables:
-  - name: azureServiceConnection
-    value: docs-filler-azure            # <-- name of your ARM service connection
-  - name: rgName
-    value: docs-filler-rg               # <-- resource group the app lives in
-  - name: acrName
-    value: docs-filler-acr              # <-- your existing ACR (alphanumeric)
-  - name: appName
-    value: docs-filler                  # <-- your existing Container App
-  - name: imageRepo
-    value: docs-filler
   - name: pythonVersion
     value: 3.12
   # Deploy only on a real merge to main (not on PR validation builds).
@@ -85,33 +72,23 @@ stages:
 
   # ---------------------------------------------------------------------------
   - stage: Deploy
-    displayName: Build image & deploy
+    displayName: Deploy to Azure Static Web Apps
     dependsOn: Test
     condition: and(succeeded(), eq(variables.isDeploy, 'True'))
     jobs:
-      - job: build_deploy
+      - job: deploy
         pool:
           vmImage: ubuntu-latest
         steps:
-          - task: AzureCLI@2
-            displayName: Build image in ACR and update the Container App
+          - checkout: self
+            submodules: true
+          # Publish the prebuilt static site in `site/`. No build step — the
+          # assets (index.html, app.js, vendored libs) are committed as-is.
+          - task: AzureStaticWebApp@0
+            displayName: Publish site/ to Static Web Apps
             inputs:
-              azureSubscription: $(azureServiceConnection)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                set -e
-                az extension add --name containerapp --upgrade --only-show-errors --yes
-
-                # Build the image server-side in ACR (no Docker needed on the agent).
-                az acr build \
-                  --registry "$(acrName)" \
-                  --image "$(imageRepo):$(Build.BuildId)" \
-                  --image "$(imageRepo):latest" \
-                  .
-
-                # Roll out the new revision.
-                az containerapp update \
-                  --name "$(appName)" \
-                  --resource-group "$(rgName)" \
-                  --image "$(acrName).azurecr.io/$(imageRepo):$(Build.BuildId)"
+              app_location: 'site'
+              output_location: ''
+              skip_app_build: true
+              skip_api_build: true
+              azure_static_web_apps_api_token: $(deployment_token)
