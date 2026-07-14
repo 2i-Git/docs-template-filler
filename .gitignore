@@ -6,3 +6,4 @@ output/*.docx
 input/*.docx
 input/*.xlsx
 SCOPE.md
+deploy/
