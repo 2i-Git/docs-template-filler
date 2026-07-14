@@ -115,20 +115,65 @@ python fill_docs.py --help
 
 ## Files in this project
 
-| File / folder                    | What it is                                            |
-|----------------------------------|-------------------------------------------------------|
-| `fill_docs.py`                   | The script that does the work.                        |
-| `requirements.txt`               | The two libraries it needs.                           |
-| `input/Offer_Template.docx`      | Example template using the `{{ }}` convention.        |
-| `input/content.xlsx`             | Example spreadsheet (one header row, one row/person). |
-| `input/`                         | Put your template and spreadsheet here.               |
-| `output/`                        | Where finished documents are written.                 |
+| File / folder                    | What it is                                             |
+|----------------------------------|--------------------------------------------------------|
+| `fill_docs.py`                   | The command-line script.                               |
+| `docs_filler/core.py`            | The shared filling logic (used by the script and app). |
+| `webapp/`                        | The web app (FastAPI) — see below.                     |
+| `Dockerfile`                     | Builds the web app into a container for the cloud.     |
+| `deploy/README-deploy.md`        | Step-by-step Azure + Entra ID deployment guide.        |
+| `requirements.txt`               | The libraries it needs.                                |
+| `input/Offer_Template.docx`      | Example template using the `{{ }}` convention.         |
+| `input/content.xlsx`             | Example spreadsheet (one header row, one row/person).  |
+| `input/`                         | Put your template and spreadsheet here.                |
+| `output/`                        | Where the command-line script writes finished docs.    |
 
 ---
 
-## Where this is heading (future)
+## Run it as a web app (no install for your colleagues)
 
-Today this is a script HR runs locally. The intended next step is a simple
-web app (no installation) — likely hosted on Azure with **Entra ID** sign-in so
-only 2i staff can use it. The core replacement logic in `fill_docs.py` is written
-to be reused by that app later.
+There's also a small web app so non-technical colleagues can use it from a
+browser: upload the template and spreadsheet, watch a progress bar, and download
+a single ZIP of the finished documents. **Files are processed in memory and never
+saved on the server.**
+
+### Try it locally
+
+```
+pip install -r requirements.txt
+uvicorn webapp.main:app --reload
+```
+
+Then open <http://127.0.0.1:8000> in your browser.
+
+### Deploy it for the whole team (Azure + Entra ID sign-in)
+
+The app is designed to run on **Azure Container Apps**:
+
+- **Scales to zero** — it costs ≈ £0 when nobody is using it and spins up on
+  demand.
+- **Microsoft Entra ID sign-in** — using 2i's existing Entra tenant, so only 2i
+  staff can open it (handled by Azure, no passwords in the app).
+- **No stored data** — no storage account or database is attached; files exist
+  only in memory during a job.
+
+Deployment is a one-time manual setup plus an automated pipeline for updates:
+
+- **One-time setup.** Create the Azure resources (resource group, registry,
+  Container Apps environment, the app, and Entra sign-in) with step-by-step `az`
+  commands in [`deploy/README-deploy.md`](deploy/README-deploy.md).
+- **Automated updates: CI/CD.** `azure-pipelines.yml` is the **Azure DevOps**
+  pipeline: on a merge to `main` it runs the tests and, only if they pass, builds
+  the image in ACR and rolls out a new revision — using the Azure CLI, so the
+  pipeline only needs **Contributor** on the resource group. See
+  [`deploy/README-pipeline.md`](deploy/README-pipeline.md).
+
+## Tests
+
+```
+pip install -r requirements-dev.txt
+pytest
+```
+
+The suite covers the core filling logic (including placeholders split across
+runs, number formatting, and error cases) and the web endpoints end-to-end.

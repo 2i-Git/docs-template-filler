@@ -1,0 +1,117 @@
+# Docs Filler — CI/CD for Azure DevOps.
+#
+# Pull requests to main:  run the tests only.
+# Merge to main:          run the tests, then build the image in ACR and roll
+#                         out a new revision of the (already-provisioned)
+#                         Container App.
+#
+# The Azure infrastructure — resource group, ACR, Container Apps environment,
+# the app itself, and Easy Auth sign-in wired to your existing Entra app — is
+# created once, out-of-band, with the Azure CLI (see deploy/README-deploy.md).
+# This pipeline only ships new code, so its service connection only needs
+# **Contributor on the resource group** — no role assignments, no Terraform.
+#
+# Prerequisites (one-time):
+#   * The infra from deploy/README-deploy.md already exists.
+#   * An ARM service connection named as `azureServiceConnection` below, whose
+#     service principal has Contributor on the resource group.
+#   * Set acrName / appName / rgName below to the names you used.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - name: azureServiceConnection
+    value: docs-filler-azure            # <-- name of your ARM service connection
+  - name: rgName
+    value: docs-filler-rg               # <-- resource group the app lives in
+  - name: acrName
+    value: docs-filler-acr              # <-- your existing ACR (alphanumeric)
+  - name: appName
+    value: docs-filler                  # <-- your existing Container App
+  - name: imageRepo
+    value: docs-filler
+  - name: pythonVersion
+    value: 3.12
+  # Deploy only on a real merge to main (not on PR validation builds).
+  - name: isDeploy
+    value: $[and(eq(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.Reason'], 'PullRequest'))]
+
+stages:
+  # ---------------------------------------------------------------------------
+  - stage: Test
+    displayName: Run tests
+    jobs:
+      - job: BanditChecks
+        displayName: 'Bandit Security Scan'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+              addToPath: true
+
+          - script: |
+              pip install bandit
+              bandit -r -ll -ii -x logs/,reports/,fonts/ -s B101 $(Build.SourcesDirectory)
+            displayName: 'Run Bandit security checks'
+      - job: pytest
+        displayName: 'Run Unit Tests'
+        dependsOn: BanditChecks
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: $(pythonVersion)
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r requirements-dev.txt
+            displayName: Install dependencies
+          - script: pytest -q --junitxml=$(Build.SourcesDirectory)/test-results.xml
+            displayName: pytest
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: test-results.xml
+
+  # ---------------------------------------------------------------------------
+  - stage: Deploy
+    displayName: Build image & deploy
+    dependsOn: Test
+    condition: and(succeeded(), eq(variables.isDeploy, 'True'))
+    jobs:
+      - job: build_deploy
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            displayName: Build image in ACR and update the Container App
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az extension add --name containerapp --upgrade --only-show-errors --yes
+
+                # Build the image server-side in ACR (no Docker needed on the agent).
+                az acr build \
+                  --registry "$(acrName)" \
+                  --image "$(imageRepo):$(Build.BuildId)" \
+                  --image "$(imageRepo):latest" \
+                  .
+
+                # Roll out the new revision.
+                az containerapp update \
+                  --name "$(appName)" \
+                  --resource-group "$(rgName)" \
+                  --image "$(acrName).azurecr.io/$(imageRepo):$(Build.BuildId)"
