@@ -1,15 +1,20 @@
 # Docs Filler
 
+**Repo created for P&C**
+
 Fill a Word template with data from a spreadsheet — automatically producing one
 finished Word document per row (e.g. one offer letter per employee).
+
+Docs Filler is a **static web page**: you open it in a browser, choose a template
+and a spreadsheet, and download a single ZIP of the finished documents. **All of
+the work happens in your browser** — there is no server, nothing to install, and
+your files are never uploaded anywhere.
 
 You prepare two files:
 
 1. A **Word template** (`.docx`) with placeholders like `{{Employee Name}}`.
 2. A **spreadsheet** (`.xlsx`) where each column header matches a placeholder and
    each row is one person.
-
-The tool creates one filled-in document per row in an `output` folder.
 
 ---
 
@@ -47,55 +52,22 @@ this rule.
 
 ---
 
-## How to run it
+## How to use it
 
-### First time only — install the tools
+1. Open the page in a browser (your published GitHub Pages URL).
+2. Choose your **Word template** (`.docx`) and your **spreadsheet** (`.xlsx`).
+3. Click **Create documents**. A ZIP downloads with one filled document per row,
+   named after your template (e.g. `Offer_Template.zip`). Each document inside is
+   named after the first spreadsheet column (e.g. `Offer_Template - Jane Doe.docx`).
 
-Open **Terminal** (Mac) or **Command Prompt** (Windows), go to this folder, and
-run:
+### Advanced options
 
-```
-pip install -r requirements.txt
-```
+Optional settings on the page let you override the defaults:
 
-### Every time — generate the documents
-
-Put your template and spreadsheet in the `input` folder, then run (both
-`--template` and `--data` are required):
-
-```
-python fill_docs.py --template "input/Offer_Template.docx" --data "input/content.xlsx"
-```
-
-Finished documents are written to the `output/` folder by default (change it
-with `--outdir`).
-
-You'll see one line per document created, for example:
-
-```
-  ✓ Offer_Template - Test Name1.docx
-  ✓ Offer_Template - Test Name2.docx
-
-Done. 2 document(s) written to 'output/'.
-```
-
-### Using your own file names
-
-```
-python fill_docs.py --template "input/MyLetter.docx" --data "input/staff.xlsx" --outdir "letters"
-```
-
-Name each output file after a particular column (default is the first column):
-
-```
-python fill_docs.py --template "input/MyLetter.docx" --data "input/staff.xlsx" --name-column "Employee Name"
-```
-
-See every option with:
-
-```
-python fill_docs.py --help
-```
+- **Name output files by column** — name each document after a specific column's
+  value (defaults to the first column).
+- **Worksheet name** — pick a specific tab when the workbook has several
+  (defaults to the first sheet).
 
 ---
 
@@ -103,32 +75,64 @@ python fill_docs.py --help
 
 - **Numbers are tidied up automatically.** `3210000` becomes `3,210,000`, and
   amounts with decimals are rounded to 2 places (`864236.538…` → `864,236.54`).
-- **Formatting is kept.** Bold, colour, font, tables — the layout of your
-  template is preserved; only the placeholders change.
-- **Multiple sheets?** Pick one with `--sheet "SheetName"` (the first sheet is
-  used by default).
+- **Formatting is kept.** Bold, colour, font, tables, headers and footers — the
+  layout of your template is preserved; only the placeholders change.
 - **Safety check.** If a `{{Placeholder}}` in the template has no matching
-  column, the tool leaves it untouched and prints a warning listing it, so
-  nothing goes out half-finished by mistake.
+  column, it is left untouched and listed as a warning after processing, so
+  nothing goes out half-finished by mistake. **Always review the generated
+  documents before sending or filing them.**
+- **Privacy by design.** Everything runs locally in your browser. Your template
+  and spreadsheet are never uploaded to a server, written to disk, or stored
+  anywhere.
+
+---
+
+## Deploying it (GitHub Pages, free)
+
+The repo is ready to publish to GitHub Pages — it's just static files.
+
+**One-time setup:**
+
+1. Push the repo to GitHub (`main` branch).
+2. In the repo, go to **Settings → Pages → Build and deployment** and set
+   **Source: GitHub Actions**.
+
+**Deploy:** push to `main` (or run the workflow manually from the **Actions**
+tab). The included [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+publishes the `site/` folder. When it finishes, the run's **deploy** step shows
+the live URL, e.g. `https://<you>.github.io/<repo>/`.
+
+**Custom domain (optional):** **Settings → Pages → Custom domain** — add your
+domain, create the DNS record GitHub shows you, and enable **Enforce HTTPS**.
+
+> **Access is public.** GitHub Pages serves to anyone with the URL. That's fine
+> here because it's a pure client-side tool that stores nothing — files never
+> leave the user's browser.
+
+---
+
+## Running it locally
+
+The site has no build step — serve the `site/` folder with any static file
+server, for example:
+
+```
+python -m http.server -d site 8080
+```
+
+Then open <http://127.0.0.1:8080>. (Opening `index.html` directly via `file://`
+won't work — the vendored scripts need to load over http.)
 
 ---
 
 ## Files in this project
 
-| File / folder                    | What it is                                            |
-|----------------------------------|-------------------------------------------------------|
-| `fill_docs.py`                   | The script that does the work.                        |
-| `requirements.txt`               | The two libraries it needs.                           |
-| `input/Offer_Template.docx`      | Example template using the `{{ }}` convention.        |
-| `input/content.xlsx`             | Example spreadsheet (one header row, one row/person). |
-| `input/`                         | Put your template and spreadsheet here.               |
-| `output/`                        | Where finished documents are written.                 |
-
----
-
-## Where this is heading (future)
-
-Today this is a script HR runs locally. The intended next step is a simple
-web app (no installation) — likely hosted on Azure with **Entra ID** sign-in so
-only 2i staff can use it. The core replacement logic in `fill_docs.py` is written
-to be reused by that app later.
+| File / folder                    | What it is                                              |
+|----------------------------------|--------------------------------------------------------|
+| `site/index.html`                | The page (UI + styling).                               |
+| `site/app.js`                    | All the logic — reads the spreadsheet, fills the template, builds the ZIP, in the browser. |
+| `site/vendor/jszip.min.js`       | Reads/writes the `.docx` and `.zip` (vendored, no CDN).|
+| `site/vendor/xlsx.full.min.js`   | Reads the `.xlsx` (SheetJS, vendored, no CDN).         |
+| `site/2i-Logo.png`               | Logo shown in the header.                              |
+| `site/.nojekyll`                 | Tells GitHub Pages not to run Jekyll over the assets.  |
+| `.github/workflows/pages.yml`    | GitHub Actions workflow that publishes `site/`.        |

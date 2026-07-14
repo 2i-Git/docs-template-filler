@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs Filler</title>
+<style>
+  :root {
+    /* 2i brand palette */
+    --2i-blue:    #2061D9;
+    --2i-green:   #55D499;
+    --2i-navy:    #293782;
+    --2i-sky:     #DCE6FA;
+    --2i-white:   #FFFFFF;
+    --2i-text:    #272727;
+    --2i-muted:   #5A5A5A;
+
+    /* Semantic aliases */
+    --color-primary: var(--2i-blue);
+    --color-accent:  var(--2i-green);
+    --color-bg:      #F4F6FB;
+    --color-surface: var(--2i-white);
+    --color-text:    var(--2i-text);
+    --color-muted:   var(--2i-muted);
+    --font-sans:     'Segoe UI', Calibri, Arial, sans-serif;
+
+    --line: #dce3ee;
+    --danger: #b42318;
+    --danger-weak: #fdecea;
+    --ok: #0b7a44;
+    --ok-weak: #e7f6ec;
+    --accent-weak: var(--2i-sky);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.5;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; background: var(--color-surface); border-bottom: 1px solid var(--line);
+    gap: 16px; flex-wrap: wrap;
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; font-weight: 650; font-size: 17px; color: var(--2i-navy); }
+  header .brand img { width: 34px; height: 34px; display: block; }
+  header nav { display: flex; gap: 4px; }
+  header nav a {
+    text-decoration: none; color: var(--color-muted); font-size: 14px; font-weight: 600;
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; transition: background .15s, color .15s;
+  }
+  header nav a:hover { background: var(--2i-sky); color: var(--2i-blue); }
+  header nav a.active { background: var(--2i-blue); color: #fff; }
+  header .user { color: var(--color-muted); font-size: 14px; }
+  main { max-width: 680px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: var(--2i-navy); }
+  .lede { color: var(--color-muted); margin: 0 0 24px; font-size: 15px; }
+  .card {
+    background: var(--color-surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  label.field { display: block; font-weight: 600; font-size: 14px; margin: 0 0 8px; }
+  .drop {
+    display: flex; align-items: center; gap: 12px;
+    border: 1.5px dashed var(--line); border-radius: 11px; padding: 14px 16px;
+    cursor: pointer; transition: border-color .15s, background .15s; margin-bottom: 20px;
+    background: #fbfcfe;
+  }
+  .drop:hover, .drop.drag { border-color: var(--2i-blue); background: var(--2i-sky); }
+  .drop.filled { border-style: solid; border-color: var(--2i-blue); background: #fff; }
+  .drop .ic {
+    flex: none; width: 38px; height: 38px; border-radius: 9px; background: var(--2i-sky);
+    color: var(--2i-blue); display: grid; place-items: center; font-size: 18px;
+  }
+  .drop .t { min-width: 0; }
+  .drop .t .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drop .t .hint { color: var(--color-muted); font-size: 13px; }
+  input[type=file] { display: none; }
+  details { margin: 4px 0 20px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fbfcfe; }
+  details[open] { background: #fff; }
+  details summary { cursor: pointer; color: var(--2i-blue); font-size: 14px; font-weight: 600; }
+  .adv { margin-top: 12px; }
+  .adv-intro { color: var(--color-muted); font-size: 13.5px; margin: 12px 0 14px; }
+  .adv label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 4px; }
+  .adv .field-hint { color: var(--color-muted); font-size: 12.5px; margin: 0 0 14px; }
+  input[type=text] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px;
+    font: inherit; margin-bottom: 2px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--2i-blue); box-shadow: 0 0 0 3px var(--2i-sky); }
+  input[type=text]::placeholder { color: #9aa6b2; }
+  button.go {
+    width: 100%; border: 0; border-radius: 6px; padding: 12px 16px;
+    background: var(--2i-blue); color: #fff; font: inherit; font-weight: 650; font-size: 15px;
+    cursor: pointer; transition: opacity .15s, background .15s;
+  }
+  button.go:hover:not(:disabled) { background: #1a51ba; }
+  button.go:disabled { opacity: .55; cursor: default; }
+  .progress { margin-top: 22px; display: none; }
+  .bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0%; background: var(--2i-blue); transition: width .25s; }
+  .bar.indeterminate > i {
+    width: 35% !important; border-radius: 999px;
+    animation: slide 1.1s ease-in-out infinite;
+  }
+  @keyframes slide { 0%{margin-left:-35%} 100%{margin-left:100%} }
+  .status { margin-top: 10px; font-size: 14px; color: var(--color-muted); }
+  .note { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  .note.ok { background: var(--ok-weak); color: var(--ok); display: block; }
+  .note.err { background: var(--danger-weak); color: var(--danger); display: block; }
+  .note.warn { background: #fff7e6; color: #92640a; display: block; }
+  .foot { color: var(--color-muted); font-size: 12.5px; text-align: center; margin-top: 22px; }
+  code { background: var(--2i-sky); color: var(--2i-navy); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; font-family: 'Consolas', 'Courier New', monospace; }
+
+  /* ---- User Guide page ---- */
+  .guide h2 {
+    font-size: 16px; margin: 26px 0 10px; color: var(--2i-navy);
+    padding-left: 12px; border-left: 4px solid var(--2i-green);
+  }
+  .guide h2:first-child { margin-top: 0; }
+  .guide p { font-size: 14.5px; margin: 0 0 12px; }
+  .guide ol, .guide ul { font-size: 14.5px; padding-left: 22px; margin: 0 0 14px; }
+  .guide li { margin-bottom: 7px; }
+  .rule-list { list-style: none; padding-left: 0; }
+  .rule-list li {
+    border-left: 4px solid var(--2i-green); background: #fbfcfe;
+    padding: 10px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px;
+  }
+  .rule-list li strong { color: var(--2i-navy); }
+  table.ex { width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: 13.5px; border-radius: 8px; overflow: hidden; }
+  table.ex th { background: var(--2i-blue); color: #fff; text-align: left; padding: 8px 12px; font-weight: 600; }
+  table.ex td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  table.ex tr:nth-child(even) td { background: var(--2i-sky); }
+  .callout {
+    background: var(--2i-sky); border: 1px solid #c5d5f5; border-radius: 10px;
+    padding: 14px 16px; font-size: 14px; margin: 16px 0;
+  }
+  .callout strong { color: var(--2i-navy); }
+  .review-warn {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #fff7e6; border: 1px solid #f2d488; border-left: 4px solid #e0a106;
+    color: #7a5600; border-radius: 10px; padding: 12px 14px; font-size: 13.5px;
+    margin-bottom: 18px;
+  }
+  .review-warn .rw-ic { flex: none; font-size: 16px; line-height: 1.4; }
+  .review-warn strong { color: #6b4a00; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="2i-Logo.png" alt="2i logo">
+    <span>Docs Filler</span>
+  </div>
+  <nav>
+    <a id="nav-app" class="active" data-view="app">Create documents</a>
+    <a id="nav-guide" data-view="guide">User guide</a>
+  </nav>
+  <div class="user" id="user"></div>
+</header>
+
+<main>
+  <!-- ============ CREATE DOCUMENTS VIEW ============ -->
+  <section id="view-app">
+    <h1>Fill documents from a spreadsheet</h1>
+    <p class="lede">Upload a Word template with <code>{{Placeholders}}</code> and a
+    spreadsheet whose column headers match them. You'll get one document per row.
+    New here? Read the <a href="#" data-view="guide" class="guide-link">user guide</a>.</p>
+
+    <div class="review-warn" role="note">
+      <span class="rw-ic" aria-hidden="true">⚠️</span>
+      <span><strong>Always review before you use them.</strong> Docs Filler fills in
+      whatever is in your spreadsheet — it can't tell right from wrong. Open the
+      generated documents and check the details are correct and match the intended
+      data for each person before sending or filing them.</span>
+    </div>
+
+    <div class="card">
+      <form id="form">
+        <label class="field">Word template (.docx)</label>
+        <label class="drop" id="drop-template" for="template">
+          <span class="ic">📄</span>
+          <span class="t">
+            <span class="name" id="name-template">Choose or drop a .docx file</span>
+            <span class="hint">The template containing {{Placeholders}}</span>
+          </span>
+        </label>
+        <input type="file" id="template" name="template" accept=".docx" required>
+
+        <label class="field">Spreadsheet (.xlsx)</label>
+        <label class="drop" id="drop-data" for="data">
+          <span class="ic">📊</span>
+          <span class="t">
+            <span class="name" id="name-data">Choose or drop an .xlsx file</span>
+            <span class="hint">One header row, then one row per document</span>
+          </span>
+        </label>
+        <input type="file" id="data" name="data" accept=".xlsx" required>
+
+        <details>
+          <summary>Advanced options</summary>
+          <div class="adv">
+            <p class="adv-intro">These are optional. Leave them blank and Docs Filler
+            uses sensible defaults. Set them only when you need to override that behaviour.</p>
+
+            <label for="name_column">Name output files by column</label>
+            <input type="text" id="name_column" name="name_column"
+                   placeholder="e.g. Employee Name">
+            <p class="field-hint">Each generated file is named after this column's value
+            for the row (e.g. <code>template - Jane Doe.docx</code>). Defaults to the
+            <strong>first column</strong> of the spreadsheet.</p>
+
+            <label for="sheet">Worksheet name</label>
+            <input type="text" id="sheet" name="sheet"
+                   placeholder="e.g. Staff 2026">
+            <p class="field-hint">Pick a specific tab when the workbook has several.
+            Defaults to the <strong>first worksheet</strong>.</p>
+          </div>
+        </details>
+
+        <button class="go" id="go" type="submit">Create documents</button>
+      </form>
+
+      <div class="progress" id="progress">
+        <div class="bar indeterminate" id="bar"><i></i></div>
+        <div class="status" id="status">Starting…</div>
+      </div>
+
+      <div class="note" id="note"></div>
+    </div>
+
+    <p class="foot">Everything runs in your browser — your files never leave your
+    device and are never uploaded or stored.</p>
+  </section>
+
+  <!-- ============ USER GUIDE VIEW ============ -->
+  <section id="view-guide" class="hidden">
+    <h1>User guide</h1>
+    <p class="lede">How to prepare your files and generate a batch of documents.</p>
+
+    <div class="card guide">
+      <h2>How it works</h2>
+      <p>Docs Filler takes one Word <strong>template</strong> and one Excel
+      <strong>spreadsheet</strong>. For every data row in the spreadsheet it produces a
+      copy of the template with the placeholders swapped for that row's values, then hands
+      you all the copies in a single <code>.zip</code>.</p>
+
+      <h2>Step by step</h2>
+      <ol>
+        <li><strong>Build a Word template</strong> (<code>.docx</code>). Anywhere you want
+        a value to appear, type a placeholder in double curly braces, e.g.
+        <code>{{First Name}}</code>. Formatting (bold, font, size) is preserved.</li>
+        <li><strong>Build a spreadsheet</strong> (<code>.xlsx</code>). Put your field names
+        in the <strong>first row</strong> — these are the column headers. Add one row per
+        document below.</li>
+        <li><strong>Match the names.</strong> Each placeholder in the template must match a
+        column header in the spreadsheet.</li>
+        <li><strong>Upload both files</strong> on the <a href="#" data-view="app" class="guide-link">Create documents</a> page and click <strong>Create documents</strong>.</li>
+        <li><strong>Download the <code>.zip</code></strong> — it contains one filled
+        document per data row.</li>
+      </ol>
+
+      <h2>Requirements — variable naming convention</h2>
+      <p>A "variable" is a placeholder in the template that gets filled from the
+      spreadsheet. Follow these rules so every variable resolves correctly:</p>
+      <ul class="rule-list">
+        <li><strong>Wrap in double curly braces:</strong> write <code>{{Column Header}}</code>.
+        Single braces or other brackets are ignored.</li>
+        <li><strong>Name = column header:</strong> the text inside the braces must be the
+        same as a column header in the first row of the spreadsheet.</li>
+        <li><strong>Case and spacing don't matter:</strong> <code>{{First Name}}</code>,
+        <code>{{first name}}</code> and <code>{{  First   Name  }}</code> all match a
+        <em>First Name</em> column. Matching is case-insensitive and collapses extra
+        spaces.</li>
+        <li><strong>Spaces inside names are fine:</strong> <code>{{Start Date}}</code> works —
+        you don't need underscores or camelCase.</li>
+        <li><strong>Unmatched placeholders are left untouched:</strong> if a
+        <code>{{Placeholder}}</code> has no matching column, it stays in the document
+        unchanged and is listed as a warning after processing. Check your spelling if you
+        see one.</li>
+        <li><strong>Empty cells become blank:</strong> a matching column with no value for a
+        row simply inserts nothing.</li>
+      </ul>
+
+      <h2>Example</h2>
+      <p>Template text:</p>
+      <p><code>Dear {{First Name}} {{Last Name}}, your start date is {{Start Date}}.</code></p>
+      <p>Spreadsheet:</p>
+      <table class="ex">
+        <thead>
+          <tr><th>First Name</th><th>Last Name</th><th>Start Date</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Jane</td><td>Doe</td><td>01 Sep 2026</td></tr>
+          <tr><td>Sam</td><td>Okoro</td><td>15 Sep 2026</td></tr>
+        </tbody>
+      </table>
+      <p>Result: two documents — <em>"Dear Jane Doe, your start date is 01 Sep 2026."</em>
+      and one for Sam.</p>
+
+      <div class="callout">
+        <strong>Tip:</strong> use <em>Advanced options</em> on the Create documents page to
+        name each output file after a specific column, or to pick a particular worksheet
+        when your workbook has more than one tab.
+      </div>
+
+      <h2>Privacy</h2>
+      <p>Everything happens locally in your web browser. Your template and spreadsheet
+      are read and filled on your own device — they are never uploaded to a server,
+      written to disk, or stored anywhere.</p>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+// --- simple two-view navigation ---
+function showView(name) {
+  const isApp = name !== "guide";
+  $("view-app").classList.toggle("hidden", !isApp);
+  $("view-guide").classList.toggle("hidden", isApp);
+  $("nav-app").classList.toggle("active", isApp);
+  $("nav-guide").classList.toggle("active", !isApp);
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll("[data-view]").forEach(el => {
+  el.addEventListener("click", (e) => {
+    if (el.tagName === "A") e.preventDefault();
+    showView(el.getAttribute("data-view"));
+  });
+});
+
+// File picker labelling + drag/drop styling.
+function wireDrop(inputId, dropId, nameId) {
+  const input = $(inputId), drop = $(dropId), name = $(nameId);
+  input.addEventListener("change", () => {
+    if (input.files.length) {
+      name.textContent = input.files[0].name;
+      drop.classList.add("filled");
+    }
+  });
+  ["dragover", "dragenter"].forEach(e => drop.addEventListener(e, ev => {
+    ev.preventDefault(); drop.classList.add("drag");
+  }));
+  ["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => {
+    ev.preventDefault(); drop.classList.remove("drag");
+  }));
+  drop.addEventListener("drop", ev => {
+    if (ev.dataTransfer.files.length) {
+      input.files = ev.dataTransfer.files;
+      input.dispatchEvent(new Event("change"));
+    }
+  });
+}
+wireDrop("template", "drop-template", "name-template");
+wireDrop("data", "drop-data", "name-data");
+
+function showNote(kind, html) {
+  const n = $("note");
+  n.className = "note " + kind;
+  n.innerHTML = html;
+}
+function clearNote() { $("note").className = "note"; $("note").innerHTML = ""; }
+
+const readFile = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(new Uint8Array(r.result));
+  r.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+  r.readAsArrayBuffer(file);
+});
+
+// Let the browser paint progress updates between documents.
+const yieldToUI = () => new Promise(requestAnimationFrame);
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearNote();
+  const templateFile = $("template").files[0];
+  const dataFile = $("data").files[0];
+  if (!templateFile || !dataFile) {
+    showNote("err", "Please choose both a template and a spreadsheet.");
+    return;
+  }
+
+  const go = $("go");
+  go.disabled = true;
+  $("progress").style.display = "block";
+  $("bar").classList.add("indeterminate");
+  $("bar").querySelector("i").style.width = "";
+  $("status").textContent = "Reading your files…";
+
+  try {
+    const [templateBytes, xlsxBytes] = await Promise.all([
+      readFile(templateFile), readFile(dataFile),
+    ]);
+    await yieldToUI();
+
+    const baseName = templateFile.name.replace(/\.[^.]+$/, "") || "document";
+    const { zipBytes, missing } = await DocsFiller.generateZip(
+      templateBytes, xlsxBytes,
+      {
+        base_name: baseName,
+        name_column: $("name_column").value.trim(),
+        sheet: $("sheet").value.trim(),
+        progress: (done, total) => {
+          $("bar").classList.remove("indeterminate");
+          const pct = Math.round((done / total) * 100);
+          $("bar").querySelector("i").style.width = pct + "%";
+          $("status").textContent = `Creating document ${done} of ${total}…`;
+        },
+      }
+    );
+
+    $("bar").classList.remove("indeterminate");
+    $("bar").querySelector("i").style.width = "100%";
+    $("status").textContent = "Done.";
+    const zipName = baseName + ".zip";
+    triggerDownload(zipBytes, zipName);
+
+    let msg = `<strong>Ready.</strong> Your ${zipName} download has started. `
+            + `Please open the documents and check every detail is correct and matches `
+            + `the intended data before sending or filing them.`;
+    if (missing && missing.length) {
+      const list = missing.map(m => `{{${m}}}`).join(", ");
+      msg += `<br><br>Note: these placeholders had no matching column and were left unchanged: ${list}`;
+    }
+    showNote("ok", msg);
+    resetButton();
+  } catch (err) {
+    const message = (err && err.name === "DocsFillerError")
+      ? err.message
+      : (err && err.message) || "Something went wrong while creating the documents.";
+    finishError(message);
+  }
+});
+
+function triggerDownload(zipBytes, filename) {
+  const blob = new Blob([zipBytes], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "documents.zip";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function resetButton() { $("go").disabled = false; }
+function finishError(message) {
+  $("progress").style.display = "none";
+  showNote("err", message);
+  resetButton();
+}
+</script>
+</body>
+</html>
