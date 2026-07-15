@@ -1,12 +1,16 @@
-# Deploy the static site in `site/` to GitHub Pages.
+# Test the client-side core, then deploy the static site in `site/` to GitHub Pages.
 #
 # One-time setup in the repo: Settings -> Pages -> Build and deployment ->
 # Source: "GitHub Actions". After that, every push to `main` publishes `site/`.
+#
+# Tests run on pushes and pull requests; a deploy only happens on `main` and
+# only if the tests passed.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -20,7 +24,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependencies to install: the tests use the Node built-in runner and
+      # the libraries already vendored in site/vendor/. The glob is left
+      # unquoted so the shell expands it, rather than relying on Node's own
+      # glob support.
+      - name: Run unit tests
+        run: node --test tests/*.test.js
+
   deploy:
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -291,6 +291,51 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Leftover check — final safety net over the *filled* output
+  // ---------------------------------------------------------------------------
+
+  /** Short window of text around the first stray brace, for context. */
+  function excerpt(text) {
+    const i = text.search(/\{\{|\}\}/);
+    const start = Math.max(0, i - 30);
+    const end = Math.min(text.length, i + 40);
+    return (
+      (start > 0 ? "…" : "") +
+      text.slice(start, end).trim() +
+      (end < text.length ? "…" : "")
+    );
+  }
+
+  function collectLeftovers(text, leftovers) {
+    if (text.indexOf("{{") === -1 && text.indexOf("}}") === -1) return;
+    // Pull out well-formed placeholders first, so what remains is only the
+    // half-open or otherwise malformed braces.
+    const remainder = text.replace(placeholderRegex(), function (_, name) {
+      leftovers.add("{{" + name + "}}");
+      return "";
+    });
+    if (/\{\{|\}\}/.test(remainder)) leftovers.add(excerpt(remainder));
+  }
+
+  /**
+   * Scan a filled XML part for any {{ or }} that survived replacement.
+   *
+   * This is deliberately independent of the fill pass: it catches unmatched
+   * columns (already in `missing`) but also unclosed braces, stray }}, and
+   * placeholders broken across paragraphs that the fill regex never saw.
+   */
+  function scanLeftovers(xml, leftovers) {
+    const paragraphs = xml.match(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g) || [];
+    for (const p of paragraphs) {
+      const tRe = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+      let text = "";
+      let m;
+      while ((m = tRe.exec(p)) !== null) text += xmlUnescape(m[1]);
+      collectLeftovers(text, leftovers);
+    }
+  }
+
   // The document body plus every header/footer — mirrors core.iter_paragraphs
   // (body + tables + headers/footers). Tables live inside these parts already.
   function isFillablePart(path) {
@@ -301,7 +346,7 @@
     );
   }
 
-  async function fillDocument(templateBytes, record, missing) {
+  async function fillDocument(templateBytes, record, missing, leftovers) {
     const zip = await JSZip.loadAsync(toUint8(templateBytes));
 
     function resolve(placeholderName) {
@@ -315,7 +360,9 @@
     const paths = Object.keys(zip.files).filter(isFillablePart);
     for (const path of paths) {
       const xml = await zip.file(path).async("string");
-      zip.file(path, fillPart(xml, resolve, missing));
+      const filled = fillPart(xml, resolve, missing);
+      zip.file(path, filled);
+      if (leftovers) scanLeftovers(filled, leftovers);
     }
     return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
   }
@@ -368,26 +415,37 @@
     const total = records.length;
     const documents = [];
     const allMissing = new Set();
+    const allLeftovers = new Set();
+    const leftoverFiles = new Set();
     const seenNames = {};
 
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const missing = new Set();
-      const bytes = await fillDocument(templateBytes, record, missing);
+      const leftovers = new Set();
+      const bytes = await fillDocument(templateBytes, record, missing, leftovers);
       missing.forEach((x) => allMissing.add(x));
+      leftovers.forEach((x) => allLeftovers.add(x));
 
       const base = safeFilename(formatValue(record[nameKey]), "row_" + (i + 1));
       let filename = baseName + " - " + base;
       const count = (seenNames[filename] || 0) + 1;
       seenNames[filename] = count;
       if (count > 1) filename = filename + " (" + count + ")";
+      filename = filename + ".docx";
 
-      documents.push({ filename: filename + ".docx", bytes: bytes });
+      if (leftovers.size) leftoverFiles.add(filename);
+      documents.push({ filename: filename, bytes: bytes });
 
       if (progress) progress(i + 1, total);
     }
 
-    return { documents: documents, missing: Array.from(allMissing).sort() };
+    return {
+      documents: documents,
+      missing: Array.from(allMissing).sort(),
+      leftovers: Array.from(allLeftovers).sort(),
+      leftoverFiles: Array.from(leftoverFiles).sort(),
+    };
   }
 
   async function generateZip(templateBytes, xlsxBytes, opts) {
@@ -400,7 +458,12 @@
       type: "uint8array",
       compression: "DEFLATE",
     });
-    return { zipBytes: zipBytes, missing: built.missing };
+    return {
+      zipBytes: zipBytes,
+      missing: built.missing,
+      leftovers: built.leftovers,
+      leftoverFiles: built.leftoverFiles,
+    };
   }
 
   // ---------------------------------------------------------------------------
