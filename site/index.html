@@ -110,7 +110,12 @@
   .note { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
   .note.ok { background: var(--ok-weak); color: var(--ok); display: block; }
   .note.err { background: var(--danger-weak); color: var(--danger); display: block; }
-  .note.warn { background: #fff7e6; color: #92640a; display: block; }
+  /* Unreplaced variables: red, like an error — a half-filled document is a
+     defect, not an aside. Kept distinct from .note.err so the two stay
+     independently styleable. */
+  .note.warn { background: var(--danger-weak); color: var(--danger); display: block; }
+  /* The default blue code chip clashes inside the red panel. */
+  .note.warn code { background: #f9d2cd; color: #7a1b12; }
   .foot { color: var(--color-muted); font-size: 12.5px; text-align: center; margin-top: 22px; }
   code { background: var(--2i-sky); color: var(--2i-navy); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; font-family: 'Consolas', 'Courier New', monospace; }
 
@@ -362,6 +367,13 @@ function wireDrop(inputId, dropId, nameId) {
 wireDrop("template", "drop-template", "name-template");
 wireDrop("data", "drop-data", "name-data");
 
+// Leftover snippets come from the user's document, so escape before interpolating.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 function showNote(kind, html) {
   const n = $("note");
   n.className = "note " + kind;
@@ -403,7 +415,7 @@ $("form").addEventListener("submit", async (e) => {
     await yieldToUI();
 
     const baseName = templateFile.name.replace(/\.[^.]+$/, "") || "document";
-    const { zipBytes, missing } = await DocsFiller.generateZip(
+    const { zipBytes, missing, leftovers, leftoverFiles } = await DocsFiller.generateZip(
       templateBytes, xlsxBytes,
       {
         base_name: baseName,
@@ -427,11 +439,26 @@ $("form").addEventListener("submit", async (e) => {
     let msg = `<strong>Ready.</strong> Your ${zipName} download has started. `
             + `Please open the documents and check every detail is correct and matches `
             + `the intended data before sending or filing them.`;
-    if (missing && missing.length) {
-      const list = missing.map(m => `{{${m}}}`).join(", ");
-      msg += `<br><br>Note: these placeholders had no matching column and were left unchanged: ${list}`;
+
+    if (leftovers && leftovers.length) {
+      const list = leftovers.map(l => `<code>${escapeHtml(l)}</code>`).join(", ");
+      const fileCount = (leftoverFiles || []).length;
+      const where = fileCount === 1
+        ? `1 document still contains`
+        : `${fileCount} documents still contain`;
+      msg = `<strong>⚠️ Some variables were not replaced.</strong> Your ${zipName} `
+          + `download has started, but ${where} unreplaced text: ${list}`
+          + `<br><br>This usually means the placeholder doesn't match any column header `
+          + `in your spreadsheet, or the braces are mistyped (e.g. a missing `
+          + `<code>}}</code>). Check the spelling, then re-run.`;
+      if (missing && missing.length) {
+        const cols = missing.map(m => `<code>{{${escapeHtml(m)}}}</code>`).join(", ");
+        msg += `<br><br>No matching column was found for: ${cols}`;
+      }
+      showNote("warn", msg);
+    } else {
+      showNote("ok", msg);
     }
-    showNote("ok", msg);
     resetButton();
   } catch (err) {
     const message = (err && err.name === "DocsFillerError")

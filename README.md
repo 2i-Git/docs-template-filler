@@ -125,6 +125,25 @@ won't work — the vendored scripts need to load over http.)
 
 ---
 
+## Tests
+
+`site/app.js` also loads under Node, so its logic is unit-tested directly. The
+tests use the Node built-in test runner and the already-vendored libraries —
+there is nothing to install:
+
+```
+node --test tests/*.test.js
+```
+
+They cover value formatting, spreadsheet reading, placeholder replacement
+(including placeholders split across Word runs), output filenames, and the
+unreplaced-variable check.
+
+CI runs these on every push and pull request, and **a deploy to Pages only
+happens if they pass** — see [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+
+---
+
 ## Files in this project
 
 | File / folder                    | What it is                                              |
@@ -135,4 +154,5 @@ won't work — the vendored scripts need to load over http.)
 | `site/vendor/xlsx.full.min.js`   | Reads the `.xlsx` (SheetJS, vendored, no CDN).         |
 | `site/2i-Logo.png`               | Logo shown in the header.                              |
 | `site/.nojekyll`                 | Tells GitHub Pages not to run Jekyll over the assets.  |
-| `.github/workflows/pages.yml`    | GitHub Actions workflow that publishes `site/`.        |
+| `tests/core.test.js`             | Unit tests for `site/app.js` (`node --test tests/*.test.js`). |
+| `.github/workflows/pages.yml`    | GitHub Actions workflow that tests, then publishes `site/`. |
